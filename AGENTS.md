@@ -1,7 +1,7 @@
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **New project 3** (196 symbols, 241 relationships, 0 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **todobar** (222 symbols, 271 relationships, 0 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
@@ -24,10 +24,10 @@ This project is indexed by GitNexus as **New project 3** (196 symbols, 241 relat
 
 | Resource | Use for |
 |----------|---------|
-| `gitnexus://repo/New project 3/context` | Codebase overview, check index freshness |
-| `gitnexus://repo/New project 3/clusters` | All functional areas |
-| `gitnexus://repo/New project 3/processes` | All execution flows |
-| `gitnexus://repo/New project 3/process/{name}` | Step-by-step execution trace |
+| `gitnexus://repo/todobar/context` | Codebase overview, check index freshness |
+| `gitnexus://repo/todobar/clusters` | All functional areas |
+| `gitnexus://repo/todobar/processes` | All execution flows |
+| `gitnexus://repo/todobar/process/{name}` | Step-by-step execution trace |
 
 ## CLI
 
