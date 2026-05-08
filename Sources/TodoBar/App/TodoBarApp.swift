@@ -15,12 +15,16 @@ struct TodoBarApp: App {
 
     var body: some Scene {
         WindowGroup("TodoBar") {
+            let width = CGFloat(store.settings.panelWidth + store.settings.visibleTab)
+
             ContentView()
                 .environmentObject(store)
-                .frame(minWidth: 420, idealWidth: 560, minHeight: 760, idealHeight: 900)
+                .frame(width: width)
+                .frame(minHeight: 760, idealHeight: 900)
                 .preferredColorScheme(store.settings.theme == .dark ? .dark : .light)
         }
         .windowStyle(.hiddenTitleBar)
+        .defaultSize(width: 382, height: 860)
         .commands {
             CommandGroup(replacing: .newItem) { }
             CommandMenu("TodoBar") {

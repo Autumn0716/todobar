@@ -9,7 +9,10 @@ MIN_SYSTEM_VERSION="14.0"
 APP_DIR="dist/${APP_NAME}.app"
 CONTENTS_DIR="${APP_DIR}/Contents"
 MACOS_DIR="${CONTENTS_DIR}/MacOS"
+RESOURCES_DIR="${CONTENTS_DIR}/Resources"
 EXECUTABLE_PATH="${MACOS_DIR}/${APP_NAME}"
+ICONSET_DIR="Resources/AppIcon.iconset"
+ICON_PATH="${RESOURCES_DIR}/AppIcon.icns"
 MODE="${1:-run}"
 
 usage() {
@@ -59,9 +62,16 @@ fi
 
 echo "Staging ${APP_DIR}..."
 /bin/rm -rf "${APP_DIR}"
-/bin/mkdir -p "${MACOS_DIR}"
+/bin/mkdir -p "${MACOS_DIR}" "${RESOURCES_DIR}"
 /bin/cp "${BUILD_BINARY}" "${EXECUTABLE_PATH}"
 /bin/chmod +x "${EXECUTABLE_PATH}"
+
+if [[ ! -d "${ICONSET_DIR}" ]]; then
+  echo "App iconset not found at ${ICONSET_DIR}" >&2
+  exit 1
+fi
+
+/usr/bin/iconutil -c icns "${ICONSET_DIR}" -o "${ICON_PATH}"
 
 cat > "${CONTENTS_DIR}/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -74,6 +84,8 @@ cat > "${CONTENTS_DIR}/Info.plist" <<EOF
   <string>${BUNDLE_ID}</string>
   <key>CFBundleName</key>
   <string>${APP_NAME}</string>
+  <key>CFBundleIconFile</key>
+  <string>AppIcon</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>LSMinimumSystemVersion</key>

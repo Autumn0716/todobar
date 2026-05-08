@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import TodoBarCore
 
@@ -11,16 +12,19 @@ struct ContentView: View {
             let offset = store.board.isPanelOpen ? 0 : -(panelWidth - settings.visibleTab)
 
             ZStack(alignment: .leading) {
-                BackdropView()
-
                 HStack(spacing: 0) {
                     panel(settings: settings, panelWidth: panelWidth)
-                    handle(settings: settings)
+                    handle(settings: settings, availableHeight: proxy.size.height)
                 }
                 .offset(x: CGFloat(offset))
                 .animation(.spring(response: settings.motionMs / 1000, dampingFraction: 0.78), value: store.board.isPanelOpen)
             }
-            .background(Color(nsColor: .windowBackgroundColor))
+            .frame(width: CGFloat(panelWidth + settings.visibleTab), alignment: .leading)
+            .frame(maxHeight: .infinity)
+            .background {
+                TransparentWindowConfigurator()
+                    .allowsHitTesting(false)
+            }
         }
     }
 
@@ -58,7 +62,7 @@ struct ContentView: View {
         .shadow(color: .black.opacity(settings.theme == .dark ? 0.45 : 0.18), radius: 34, x: 16, y: 0)
     }
 
-    private func handle(settings: TodoSettings) -> some View {
+    private func handle(settings: TodoSettings, availableHeight: CGFloat) -> some View {
         let shape = UnevenRoundedRectangle(
             topLeadingRadius: 0,
             bottomLeadingRadius: 0,
@@ -89,7 +93,7 @@ struct ContentView: View {
 
             Spacer()
         }
-        .padding(.top, CGFloat(settings.verticalPosition / 100 * 720))
+        .padding(.top, max(18, CGFloat(settings.verticalPosition / 100) * availableHeight))
         .frame(width: CGFloat(settings.visibleTab))
         .frame(maxHeight: .infinity)
     }
@@ -100,64 +104,29 @@ struct ContentView: View {
     }
 }
 
-private struct BackdropView: View {
-    var body: some View {
-        ZStack {
-            ZStack {
-                LinearGradient(
-                    colors: [
-                        .black,
-                        Color(red: 0.09, green: 0.10, blue: 0.13),
-                        Color(red: 0.04, green: 0.04, blue: 0.05)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
+private struct TransparentWindowConfigurator: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        configure(from: view)
+        return view
+    }
 
-                AngularGradient(
-                    colors: [
-                        .clear,
-                        Color(red: 0.37, green: 0.39, blue: 0.52).opacity(0.16),
-                        .clear,
-                        Color(red: 0.20, green: 0.17, blue: 0.28).opacity(0.18),
-                        .clear
-                    ],
-                    center: .center
-                )
-                .blur(radius: 34)
+    func updateNSView(_ nsView: NSView, context: Context) {
+        configure(from: nsView)
+    }
+
+    private func configure(from view: NSView) {
+        DispatchQueue.main.async {
+            guard let window = view.window else {
+                return
             }
 
-            RoundedRectangle(cornerRadius: 24)
-                .fill(.ultraThinMaterial)
-                .opacity(0.55)
-                .overlay(alignment: .topTrailing) {
-                    VStack(alignment: .trailing, spacing: 12) {
-                        Capsule().fill(.white.opacity(0.07)).frame(width: 170, height: 14)
-                        Capsule().fill(.white.opacity(0.07)).frame(width: 170, height: 14)
-                        Capsule().fill(.white.opacity(0.07)).frame(width: 170, height: 14)
-                    }
-                    .padding(26)
-                }
-                .overlay(
-                    RoundedRectangle(cornerRadius: 24)
-                        .stroke(.white.opacity(0.08), lineWidth: 1)
-                )
-                .frame(width: 580, height: 420)
-                .offset(x: 220)
-
-            Text("专注模式")
-                .font(.system(size: 78, weight: .heavy, design: .rounded))
-                .foregroundStyle(.white.opacity(0.82))
-                .offset(x: -210, y: -80)
-
-            Image(systemName: "archivebox")
-                .font(.system(size: 21, weight: .semibold))
-                .foregroundStyle(Color.black.opacity(0.82))
-                .frame(width: 58, height: 58)
-                .background(Color(red: 0.72, green: 0.70, blue: 0.83))
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .offset(x: 260, y: 310)
+            window.isOpaque = false
+            window.backgroundColor = .clear
+            window.titleVisibility = .hidden
+            window.titlebarAppearsTransparent = true
+            window.isMovableByWindowBackground = true
+            window.styleMask.insert(.fullSizeContentView)
         }
-        .ignoresSafeArea()
     }
 }
