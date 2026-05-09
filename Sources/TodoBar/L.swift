@@ -57,6 +57,9 @@ enum L {
         "task.markIncomplete": ["zh": "标记为未完成", "en": "Mark Incomplete"],
         "task.markComplete": ["zh": "标记为已完成", "en": "Mark Complete"],
         "task.delete": ["zh": "删除", "en": "Delete"],
+        "task.deleted": ["zh": "已删除", "en": "Deleted"],
+        "task.undo": ["zh": "撤销", "en": "Undo"],
+        "task.undoMessage": ["zh": "已删除\"%@\"", "en": "Deleted \"%@\""],
 
         // Handle
         "handle.collapse": ["zh": "收起 TodoBar", "en": "Collapse TodoBar"],

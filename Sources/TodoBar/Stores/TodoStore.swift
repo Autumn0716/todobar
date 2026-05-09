@@ -83,6 +83,10 @@ final class TodoStore: ObservableObject {
         board.deleteTask(sectionID: sectionID, taskID: taskID)
     }
 
+    func reinsertTask(sectionID: String, task: TodoTask, at index: Int) {
+        board.reinsertTask(sectionID: sectionID, task: task, at: index)
+    }
+
     func toggleSection(_ sectionID: String) {
         board.toggleSection(sectionID)
     }

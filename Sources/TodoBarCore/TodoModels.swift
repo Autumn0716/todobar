@@ -229,6 +229,14 @@ public struct TodoBoard: Codable, Equatable, Sendable {
         sections[sectionIndex].tasks.removeAll { $0.id == taskID }
     }
 
+    public mutating func reinsertTask(sectionID: String, task: TodoTask, at index: Int) {
+        guard let sectionIndex = sections.firstIndex(where: { $0.id == sectionID }) else {
+            return
+        }
+        let clampedIndex = min(index, sections[sectionIndex].tasks.count)
+        sections[sectionIndex].tasks.insert(task, at: clampedIndex)
+    }
+
     public mutating func toggleSection(_ sectionID: String) {
         guard let sectionIndex = sections.firstIndex(where: { $0.id == sectionID }) else {
             return

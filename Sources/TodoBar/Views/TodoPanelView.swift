@@ -6,17 +6,31 @@ struct TodoPanelView: View {
     @EnvironmentObject private var store: TodoStore
     @Environment(\.webTheme) private var theme
 
+    @State private var pendingUndoTask: TodoTask?
+    @State private var pendingUndoSectionID: String?
+    @State private var pendingUndoIndex: Int?
+
     var body: some View {
         VStack(alignment: .leading, spacing: 22) {
             header
             ProgressRibbonView()
 
             ForEach(store.sections.filter { $0.id == "today" || $0.id == "month" }) { section in
-                TaskSectionView(section: section, countMode: section.id == "today" ? .done : .total)
+                TaskSectionView(section: section, countMode: section.id == "today" ? .done : .total, onTaskDeleted: handleTaskDeleted)
             }
 
             listsSection
         }
+        .overlay(alignment: .bottom) {
+            if pendingUndoTask != nil {
+                UndoBar(
+                    title: String(format: L.t("task.undoMessage"), pendingUndoTask?.title ?? ""),
+                    onUndo: undoDelete
+                )
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.easeOut(duration: 0.16), value: pendingUndoTask)
     }
 
     private var header: some View {
@@ -76,8 +90,42 @@ struct TodoPanelView: View {
             }
 
             ForEach(store.customSections) { section in
-                CustomListView(section: section)
+                CustomListView(section: section, onTaskDeleted: handleTaskDeleted)
             }
+        }
+    }
+
+    private func handleTaskDeleted(sectionID: String, task: TodoTask, index: Int) {
+        pendingUndoTask = task
+        pendingUndoSectionID = sectionID
+        pendingUndoIndex = index
+
+        withAnimation(.spring(response: 0.22, dampingFraction: 0.85)) {
+            store.deleteTask(sectionID: sectionID, taskID: task.id)
+        }
+
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(3))
+            if pendingUndoTask?.id == task.id {
+                withAnimation(.easeOut(duration: 0.16)) {
+                    pendingUndoTask = nil
+                    pendingUndoSectionID = nil
+                    pendingUndoIndex = nil
+                }
+            }
+        }
+    }
+
+    private func undoDelete() {
+        guard let task = pendingUndoTask,
+              let sectionID = pendingUndoSectionID,
+              let index = pendingUndoIndex else { return }
+
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
+            store.reinsertTask(sectionID: sectionID, task: task, at: index)
+            pendingUndoTask = nil
+            pendingUndoSectionID = nil
+            pendingUndoIndex = nil
         }
     }
 }
@@ -132,9 +180,11 @@ private struct TaskSectionView: View {
     @EnvironmentObject private var store: TodoStore
     let section: TodoSection
     let countMode: CountMode
+    let onTaskDeleted: (String, TodoTask, Int) -> Void
     @State private var draggedTask: TodoTask?
     @State private var dragOffset: CGFloat = 0
     @State private var targetIndex: Int?
+    @State private var deletingIDs: Set<String> = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: CGFloat(store.settings.rowGap)) {
@@ -153,29 +203,34 @@ private struct TaskSectionView: View {
 
                 ForEach(Array(section.tasks.enumerated()), id: \.element.id) { index, task in
                     let isDragged = draggedTask?.id == task.id
-                    TaskRowView(sectionID: section.id, task: task)
-                        .offset(y: offsetForTask(at: index))
-                        .zIndex(isDragged ? 1 : 0)
-                        .scaleEffect(isDragged ? 1.02 : 1)
-                        .opacity(isDragged ? 0.9 : 1)
-                        .animation(isDragged ? nil : .spring(response: 0.3, dampingFraction: 0.8), value: targetIndex)
-                        .gesture(
-                            DragGesture(minimumDistance: 5)
-                                .onChanged { value in
-                                    if draggedTask == nil {
-                                        draggedTask = task
-                                        targetIndex = index
-                                    }
-                                    dragOffset = value.translation.height
-                                    recalcTarget()
+                    TaskRowView(
+                        sectionID: section.id,
+                        task: task,
+                        isDeleting: deletingIDs.contains(task.id),
+                        onDelete: { deleteTask(task) }
+                    )
+                    .offset(y: offsetForTask(at: index))
+                    .zIndex(isDragged ? 1 : 0)
+                    .scaleEffect(isDragged ? 1.02 : 1)
+                    .opacity(isDragged ? 0.9 : 1)
+                    .animation(isDragged ? nil : .spring(response: 0.3, dampingFraction: 0.8), value: targetIndex)
+                    .gesture(
+                        DragGesture(minimumDistance: 5)
+                            .onChanged { value in
+                                if draggedTask == nil {
+                                    draggedTask = task
+                                    targetIndex = index
                                 }
-                                .onEnded { _ in
-                                    commitReorder()
-                                    draggedTask = nil
-                                    dragOffset = 0
-                                    targetIndex = nil
-                                }
-                        )
+                                dragOffset = value.translation.height
+                                recalcTarget()
+                            }
+                            .onEnded { _ in
+                                commitReorder()
+                                draggedTask = nil
+                                dragOffset = 0
+                                targetIndex = nil
+                            }
+                    )
                 }
             }
         }
@@ -234,15 +289,29 @@ private struct TaskSectionView: View {
             store.reorderTask(sectionID: section.id, draggedID: draggedTask.id, targetID: section.tasks[target].id)
         }
     }
+
+    private func deleteTask(_ task: TodoTask) {
+        guard !deletingIDs.contains(task.id),
+              let index = section.tasks.firstIndex(where: { $0.id == task.id }) else { return }
+
+        withAnimation(.spring(response: 0.15, dampingFraction: 0.88)) {
+            _ = deletingIDs.insert(task.id)
+        }
+
+        onTaskDeleted(section.id, task, index)
+        deletingIDs.remove(task.id)
+    }
 }
 
 private struct CustomListView: View {
     @EnvironmentObject private var store: TodoStore
     @Environment(\.webTheme) private var theme
     let section: TodoSection
+    let onTaskDeleted: (String, TodoTask, Int) -> Void
     @State private var draggedTask: TodoTask?
     @State private var dragOffset: CGFloat = 0
     @State private var targetIndex: Int?
+    @State private var deletingIDs: Set<String> = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: CGFloat(store.settings.rowGap)) {
@@ -274,29 +343,34 @@ private struct CustomListView: View {
             if !section.isCollapsed {
                 ForEach(Array(section.tasks.enumerated()), id: \.element.id) { index, task in
                     let isDragged = draggedTask?.id == task.id
-                    TaskRowView(sectionID: section.id, task: task)
-                        .offset(y: offsetForTask(at: index))
-                        .zIndex(isDragged ? 1 : 0)
-                        .scaleEffect(isDragged ? 1.02 : 1)
-                        .opacity(isDragged ? 0.9 : 1)
-                        .animation(isDragged ? nil : .spring(response: 0.3, dampingFraction: 0.8), value: targetIndex)
-                        .gesture(
-                            DragGesture(minimumDistance: 5)
-                                .onChanged { value in
-                                    if draggedTask == nil {
-                                        draggedTask = task
-                                        targetIndex = index
-                                    }
-                                    dragOffset = value.translation.height
-                                    recalcTarget()
+                    TaskRowView(
+                        sectionID: section.id,
+                        task: task,
+                        isDeleting: deletingIDs.contains(task.id),
+                        onDelete: { deleteTask(task) }
+                    )
+                    .offset(y: offsetForTask(at: index))
+                    .zIndex(isDragged ? 1 : 0)
+                    .scaleEffect(isDragged ? 1.02 : 1)
+                    .opacity(isDragged ? 0.9 : 1)
+                    .animation(isDragged ? nil : .spring(response: 0.3, dampingFraction: 0.8), value: targetIndex)
+                    .gesture(
+                        DragGesture(minimumDistance: 5)
+                            .onChanged { value in
+                                if draggedTask == nil {
+                                    draggedTask = task
+                                    targetIndex = index
                                 }
-                                .onEnded { _ in
-                                    commitReorder()
-                                    draggedTask = nil
-                                    dragOffset = 0
-                                    targetIndex = nil
-                                }
-                        )
+                                dragOffset = value.translation.height
+                                recalcTarget()
+                            }
+                            .onEnded { _ in
+                                commitReorder()
+                                draggedTask = nil
+                                dragOffset = 0
+                                targetIndex = nil
+                            }
+                    )
                 }
 
                 AddRowView(prompt: section.addPrompt, symbolName: "tray") { title in
@@ -348,6 +422,18 @@ private struct CustomListView: View {
         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
             store.reorderTask(sectionID: section.id, draggedID: draggedTask.id, targetID: section.tasks[target].id)
         }
+    }
+
+    private func deleteTask(_ task: TodoTask) {
+        guard !deletingIDs.contains(task.id),
+              let index = section.tasks.firstIndex(where: { $0.id == task.id }) else { return }
+
+        withAnimation(.spring(response: 0.15, dampingFraction: 0.88)) {
+            _ = deletingIDs.insert(task.id)
+        }
+
+        onTaskDeleted(section.id, task, index)
+        deletingIDs.remove(task.id)
     }
 }
 
@@ -448,7 +534,9 @@ private struct TaskRowView: View {
     @Environment(\.webTheme) private var theme
     let sectionID: String
     let task: TodoTask
-    
+    let isDeleting: Bool
+    let onDelete: () -> Void
+
     @State private var isHovering = false
 
     var body: some View {
@@ -458,7 +546,7 @@ private struct TaskRowView: View {
             } label: {
                 ZStack {
                     RoundedRectangle(cornerRadius: task.isCompleted ? 7 : 999, style: .continuous)
-                        .stroke(task.isCompleted ? theme.lineStrong : theme.lineStrong, lineWidth: 1)
+                        .stroke(theme.lineStrong, lineWidth: 1)
                         .background(
                             RoundedRectangle(cornerRadius: task.isCompleted ? 7 : 999, style: .continuous)
                                 .fill(task.isCompleted ? theme.surfaceSoft : Color.clear)
@@ -476,6 +564,8 @@ private struct TaskRowView: View {
             }
             .fluidButton()
             .accessibilityLabel(task.isCompleted ? L.t("task.markIncomplete") : L.t("task.markComplete"))
+            .scaleEffect(isDeleting ? 0.5 : 1)
+            .opacity(isDeleting ? 0 : 1)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(task.title)
@@ -489,25 +579,22 @@ private struct TaskRowView: View {
                     .foregroundStyle(theme.muted)
                     .lineLimit(1)
             }
+            .opacity(isDeleting ? 0 : 1)
+            .offset(x: isDeleting ? 12 : 0)
 
             Spacer()
 
-            Circle()
-                .fill(task.isFocused ? theme.ink : theme.lineStrong)
-                .frame(width: 7, height: 7)
-
-            Button {
-                store.deleteTask(sectionID: sectionID, taskID: task.id)
-            } label: {
-                Image(systemName: "trash")
-                    .font(.system(size: 14, weight: .medium))
-                    .symbolRenderingMode(.hierarchical)
-                    .frame(width: 40, height: 40)
-                    .contentShape(Rectangle())
+            ZStack {
+                if isHovering && !isDeleting {
+                    TaskDeleteButton(isDeleting: isDeleting, action: onDelete)
+                        .transition(.opacity.combined(with: .scale(scale: 0.85)))
+                } else if !isDeleting {
+                    Circle()
+                        .fill(task.isFocused ? theme.ink : theme.lineStrong)
+                        .frame(width: 7, height: 7)
+                }
             }
-            .deleteButton()
-            .opacity(isHovering ? 1 : 0)
-            .accessibilityLabel("\(L.t("task.delete")) \(task.title)")
+            .frame(width: 40, height: 40)
         }
         .padding(.horizontal, 7)
         .padding(.leading, 4)
@@ -517,14 +604,22 @@ private struct TaskRowView: View {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .stroke(isHovering ? theme.lineStrong : Color.clear, lineWidth: 1)
         )
-        .offset(y: isHovering ? -1 : 0)
-        .onTapGesture(count: 2) {
-            if store.settings.doubleClickToToggle {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                    store.toggleTask(sectionID: sectionID, taskID: task.id)
+        .scaleEffect(isDeleting ? 0.96 : (isHovering ? 0.985 : 1))
+        .offset(x: isDeleting ? 20 : 0, y: isHovering ? -1 : 0)
+        .blur(radius: isDeleting ? 1.2 : 0)
+        .opacity(isDeleting ? 0 : 1)
+        .animation(.spring(response: 0.15, dampingFraction: 0.88), value: isDeleting)
+        .animation(.easeOut(duration: 0.12), value: isHovering)
+        .simultaneousGesture(
+            TapGesture(count: 2)
+                .onEnded {
+                    if store.settings.doubleClickToToggle {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            store.toggleTask(sectionID: sectionID, taskID: task.id)
+                        }
+                    }
                 }
-            }
-        }
+        )
         .onHover { hover in
             withAnimation(.easeInOut(duration: 0.15)) {
                 isHovering = hover
