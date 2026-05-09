@@ -1,8 +1,36 @@
-.gitnexus
+# Build
 .build/
-node_modules/
 dist/
-.playwright-cli/
-*.tsbuildinfo
+
+# AI / tooling
+CLAUDE.md
+AGENTS.md
+.claude/
+.codex/
+.gemini/
+.omc/
+.gitnexus/
+
+# OpenSpec / docs
+openspec/
+docs/
+
+# Web frontend (removed)
+src/
+index.html
+package.json
+package-lock.json
+tsconfig.json
+tsconfig.node.json
+vite.config.ts
 vite.config.d.ts
 vite.config.js
+node_modules/
+
+# Artifacts
+output/
+.playwright-cli/
+*.tsbuildinfo
+
+# macOS
+.DS_Store

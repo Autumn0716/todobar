@@ -1,14 +1,21 @@
 import Combine
 import Foundation
+import SwiftUI
 import TodoBarCore
 
 @MainActor
 final class TodoStore: ObservableObject {
+    @Published var isInteracting = false
+    @Published var isHandleHovered = false
+    @Published var isHandlePressed = false
+
     @Published private(set) var board: TodoBoard {
         didSet {
-            save()
+            scheduleSave()
         }
     }
+
+    private var saveTask: Task<Void, Never>?
 
     private let storageKey = "TodoBar.board.v1"
 
@@ -38,7 +45,18 @@ final class TodoStore: ObservableObject {
     }
 
     func togglePanel() {
+        cancelAutoClose()
         board.isPanelOpen.toggle()
+    }
+
+    func openPanel() {
+        cancelAutoClose()
+        board.isPanelOpen = true
+    }
+
+    func closePanel() {
+        cancelAutoClose()
+        board.isPanelOpen = false
     }
 
     func showSettings() {
@@ -69,12 +87,55 @@ final class TodoStore: ObservableObject {
         board.toggleSection(sectionID)
     }
 
+    func reorderTask(sectionID: String, draggedID: String, targetID: String) {
+        board.reorderTask(sectionID: sectionID, draggedID: draggedID, targetID: targetID)
+    }
+
     func addCustomList(title: String) {
         board.addCustomList(title: title)
     }
 
     func updateSettings(_ update: (inout TodoSettings) -> Void) {
         update(&board.settings)
+    }
+
+    @Published private var autoCloseTask: Task<Void, Never>? = nil
+    @Published var isMouseInProximity = false {
+        didSet {
+            if isMouseInProximity {
+                cancelAutoClose()
+            } else if board.isPanelOpen && settings.autoShowHide {
+                scheduleAutoClose()
+            }
+        }
+    }
+
+    func cancelAutoClose() {
+        autoCloseTask?.cancel()
+        autoCloseTask = nil
+    }
+
+    func scheduleAutoClose() {
+        cancelAutoClose()
+        let motionMs = settings.motionMs
+        autoCloseTask = Task {
+            try? await Task.sleep(nanoseconds: 800_000_000) // Slightly longer 800ms for better UX
+            guard !Task.isCancelled && !isMouseInProximity else { return }
+            await MainActor.run {
+                withAnimation(.spring(response: motionMs / 1000, dampingFraction: 0.78)) {
+                    self.closePanel()
+                }
+            }
+        }
+    }
+
+    private func scheduleSave() {
+        saveTask?.cancel()
+        saveTask = Task {
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            guard !Task.isCancelled else { return }
+            save()
+        }
     }
 
     private func save() {

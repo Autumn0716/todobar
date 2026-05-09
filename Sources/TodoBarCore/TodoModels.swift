@@ -52,6 +52,11 @@ public struct TodoSection: Identifiable, Codable, Equatable, Sendable {
     }
 }
 
+public enum SettingsTab: String, Codable, Equatable, Sendable {
+    case general
+    case ui
+}
+
 public struct TodoSettings: Codable, Equatable, Sendable {
     public var theme: TodoTheme
     public var launchAtLogin: Bool
@@ -65,6 +70,10 @@ public struct TodoSettings: Codable, Equatable, Sendable {
     public var motionMs: Double
     public var cornerRadius: Double
     public var surfaceOpacity: Double
+    public var doubleClickToToggle: Bool
+    public var language: String
+    public var autoShowHide: Bool
+    public var activeTab: SettingsTab
 
     public init(
         theme: TodoTheme = .light,
@@ -78,7 +87,11 @@ public struct TodoSettings: Codable, Equatable, Sendable {
         textSize: Double = 12.5,
         motionMs: Double = 230,
         cornerRadius: Double = 18,
-        surfaceOpacity: Double = 96
+        surfaceOpacity: Double = 96,
+        doubleClickToToggle: Bool = true,
+        language: String = "zh",
+        autoShowHide: Bool = false,
+        activeTab: SettingsTab = .general
     ) {
         self.theme = theme
         self.launchAtLogin = launchAtLogin
@@ -92,6 +105,10 @@ public struct TodoSettings: Codable, Equatable, Sendable {
         self.motionMs = motionMs
         self.cornerRadius = cornerRadius
         self.surfaceOpacity = surfaceOpacity
+        self.doubleClickToToggle = doubleClickToToggle
+        self.language = language
+        self.autoShowHide = autoShowHide
+        self.activeTab = activeTab
     }
 }
 
@@ -218,6 +235,17 @@ public struct TodoBoard: Codable, Equatable, Sendable {
         }
 
         sections[sectionIndex].isCollapsed.toggle()
+    }
+
+    public mutating func reorderTask(sectionID: String, draggedID: String, targetID: String) {
+        guard let sectionIndex = sections.firstIndex(where: { $0.id == sectionID }),
+              let fromIndex = sections[sectionIndex].tasks.firstIndex(where: { $0.id == draggedID }),
+              let toIndex = sections[sectionIndex].tasks.firstIndex(where: { $0.id == targetID }),
+              fromIndex != toIndex else {
+            return
+        }
+        let task = sections[sectionIndex].tasks.remove(at: fromIndex)
+        sections[sectionIndex].tasks.insert(task, at: toIndex)
     }
 
     public mutating func addCustomList(title rawTitle: String) {
