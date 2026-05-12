@@ -27,6 +27,7 @@ enum L {
         "settings.autoShowHide": ["zh": "自动显示/隐藏", "en": "Auto show/hide"],
         "settings.desktop": ["zh": "桌面", "en": "Desktop"],
         "settings.launchAtLogin": ["zh": "登录时启动", "en": "Launch at Login"],
+        "settings.showDockIcon": ["zh": "在程序坞中显示", "en": "Show in Dock"],
 
         // UI settings groups
         "settings.window": ["zh": "窗口", "en": "Window"],

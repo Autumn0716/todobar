@@ -47,21 +47,28 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Toggle(L.t("settings.doubleClickToggle"), isOn: doubleClickBinding)
                         .blackToggle()
-                        .font(.system(size: 14, weight: .bold))
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(theme.ink)
 
                     Toggle(L.t("settings.autoShowHide"), isOn: autoShowHideBinding)
                         .blackToggle()
-                        .font(.system(size: 14, weight: .bold))
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(theme.ink)
                 }
             }
 
             SettingsGroup(title: L.t("settings.desktop")) {
-                Toggle(L.t("settings.launchAtLogin"), isOn: launchAtLoginBinding)
-                    .blackToggle()
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(theme.ink)
+                VStack(alignment: .leading, spacing: 12) {
+                    Toggle(L.t("settings.launchAtLogin"), isOn: launchAtLoginBinding)
+                        .blackToggle()
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(theme.ink)
+
+                    Toggle(L.t("settings.showDockIcon"), isOn: showDockIconBinding)
+                        .blackToggle()
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(theme.ink)
+                }
             }
         }
     }
@@ -195,6 +202,13 @@ struct SettingsView: View {
         )
     }
 
+    private var showDockIconBinding: Binding<Bool> {
+        Binding(
+            get: { store.settings.showDockIcon },
+            set: { value in store.updateSettings { $0.showDockIcon = value } }
+        )
+    }
+
     private var panelWidthBinding: Binding<Double> {
         binding(\.panelWidth)
     }
@@ -304,7 +318,7 @@ private struct SliderRow: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text(title)
-                    .font(.system(size: 14, weight: .bold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(theme.ink)
 
                 Spacer()

@@ -3,6 +3,10 @@ import Foundation
 import SwiftUI
 import TodoBarCore
 
+enum TodoStorage {
+    static let boardKey = "TodoBar.board.v1"
+}
+
 @MainActor
 final class TodoStore: ObservableObject {
     @Published var isInteracting = false
@@ -17,12 +21,10 @@ final class TodoStore: ObservableObject {
 
     private var saveTask: Task<Void, Never>?
 
-    private let storageKey = "TodoBar.board.v1"
-
     init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
 
-        if let data = userDefaults.data(forKey: storageKey),
+        if let data = userDefaults.data(forKey: TodoStorage.boardKey),
            let decoded = try? JSONDecoder().decode(TodoBoard.self, from: data) {
             self.board = decoded
         } else {
@@ -147,6 +149,6 @@ final class TodoStore: ObservableObject {
             return
         }
 
-        userDefaults.set(data, forKey: storageKey)
+        userDefaults.set(data, forKey: TodoStorage.boardKey)
     }
 }

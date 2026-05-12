@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import TodoBarCore
 
@@ -30,4 +31,45 @@ import Testing
     #expect(board.customListIDs.last == "深度工作")
     #expect(board.sections.last?.title == "深度工作")
     #expect(board.sections.last?.tasks.isEmpty == true)
+}
+
+@Test func dockIconSettingDefaultsToVisible() {
+    let settings = TodoSettings()
+
+    #expect(settings.showDockIcon == true)
+}
+
+@Test func dockIconSettingKeepsExplicitHiddenValue() throws {
+    let settings = TodoSettings(showDockIcon: false)
+    let data = try JSONEncoder().encode(settings)
+    let decoded = try JSONDecoder().decode(TodoSettings.self, from: data)
+
+    #expect(decoded.showDockIcon == false)
+}
+
+@Test func legacySettingsWithoutDockIconDecodeAsVisible() throws {
+    let legacyJSON = #"""
+    {
+      "theme": "light",
+      "launchAtLogin": true,
+      "panelWidth": 348,
+      "visibleTab": 34,
+      "buttonHeight": 72,
+      "verticalPosition": 16,
+      "rowHeight": 41,
+      "rowGap": 7,
+      "textSize": 12.5,
+      "motionMs": 230,
+      "cornerRadius": 18,
+      "surfaceOpacity": 96,
+      "doubleClickToToggle": true,
+      "language": "zh",
+      "autoShowHide": false,
+      "activeTab": "general"
+    }
+    """#.data(using: .utf8)!
+
+    let decoded = try JSONDecoder().decode(TodoSettings.self, from: legacyJSON)
+
+    #expect(decoded.showDockIcon == true)
 }

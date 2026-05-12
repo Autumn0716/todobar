@@ -1,10 +1,32 @@
 import AppKit
 import SwiftUI
+import TodoBarCore
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        applyDockIconVisibility(Self.initialDockIconVisibility(), activatesRegularApp: false)
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApp.setActivationPolicy(.regular)
-        NSApp.activate(ignoringOtherApps: true)
+        if Self.initialDockIconVisibility() {
+            NSApp.activate(ignoringOtherApps: true)
+        }
+    }
+
+    func applyDockIconVisibility(_ isVisible: Bool, activatesRegularApp: Bool = true) {
+        NSApp.setActivationPolicy(isVisible ? .regular : .accessory)
+        if isVisible && activatesRegularApp {
+            NSApp.activate(ignoringOtherApps: true)
+        }
+    }
+
+    private static func initialDockIconVisibility(userDefaults: UserDefaults = .standard) -> Bool {
+        guard let data = userDefaults.data(forKey: TodoStorage.boardKey),
+              let board = try? JSONDecoder().decode(TodoBoard.self, from: data) else {
+            return true
+        }
+
+        return board.settings.showDockIcon
     }
 }
 
@@ -23,6 +45,12 @@ struct TodoBarApp: App {
                 .frame(minHeight: 760, idealHeight: 900)
                 .preferredColorScheme(store.settings.theme == .dark ? .dark : .light)
                 .clearWindowContainerBackground()
+                .onAppear {
+                    appDelegate.applyDockIconVisibility(store.settings.showDockIcon)
+                }
+                .onChange(of: store.settings.showDockIcon) { _, isVisible in
+                    appDelegate.applyDockIconVisibility(isVisible)
+                }
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 382, height: 860)

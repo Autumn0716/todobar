@@ -60,6 +60,7 @@ public enum SettingsTab: String, Codable, Equatable, Sendable {
 public struct TodoSettings: Codable, Equatable, Sendable {
     public var theme: TodoTheme
     public var launchAtLogin: Bool
+    public var showDockIcon: Bool
     public var panelWidth: Double
     public var visibleTab: Double
     public var buttonHeight: Double
@@ -75,9 +76,30 @@ public struct TodoSettings: Codable, Equatable, Sendable {
     public var autoShowHide: Bool
     public var activeTab: SettingsTab
 
+    private enum CodingKeys: String, CodingKey {
+        case theme
+        case launchAtLogin
+        case showDockIcon
+        case panelWidth
+        case visibleTab
+        case buttonHeight
+        case verticalPosition
+        case rowHeight
+        case rowGap
+        case textSize
+        case motionMs
+        case cornerRadius
+        case surfaceOpacity
+        case doubleClickToToggle
+        case language
+        case autoShowHide
+        case activeTab
+    }
+
     public init(
         theme: TodoTheme = .light,
         launchAtLogin: Bool = true,
+        showDockIcon: Bool = true,
         panelWidth: Double = 348,
         visibleTab: Double = 34,
         buttonHeight: Double = 72,
@@ -95,6 +117,7 @@ public struct TodoSettings: Codable, Equatable, Sendable {
     ) {
         self.theme = theme
         self.launchAtLogin = launchAtLogin
+        self.showDockIcon = showDockIcon
         self.panelWidth = panelWidth
         self.visibleTab = visibleTab
         self.buttonHeight = buttonHeight
@@ -109,6 +132,27 @@ public struct TodoSettings: Codable, Equatable, Sendable {
         self.language = language
         self.autoShowHide = autoShowHide
         self.activeTab = activeTab
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        theme = try container.decode(TodoTheme.self, forKey: .theme)
+        launchAtLogin = try container.decode(Bool.self, forKey: .launchAtLogin)
+        showDockIcon = try container.decodeIfPresent(Bool.self, forKey: .showDockIcon) ?? true
+        panelWidth = try container.decode(Double.self, forKey: .panelWidth)
+        visibleTab = try container.decode(Double.self, forKey: .visibleTab)
+        buttonHeight = try container.decode(Double.self, forKey: .buttonHeight)
+        verticalPosition = try container.decode(Double.self, forKey: .verticalPosition)
+        rowHeight = try container.decode(Double.self, forKey: .rowHeight)
+        rowGap = try container.decode(Double.self, forKey: .rowGap)
+        textSize = try container.decode(Double.self, forKey: .textSize)
+        motionMs = try container.decode(Double.self, forKey: .motionMs)
+        cornerRadius = try container.decode(Double.self, forKey: .cornerRadius)
+        surfaceOpacity = try container.decode(Double.self, forKey: .surfaceOpacity)
+        doubleClickToToggle = try container.decode(Bool.self, forKey: .doubleClickToToggle)
+        language = try container.decode(String.self, forKey: .language)
+        autoShowHide = try container.decode(Bool.self, forKey: .autoShowHide)
+        activeTab = try container.decode(SettingsTab.self, forKey: .activeTab)
     }
 }
 
